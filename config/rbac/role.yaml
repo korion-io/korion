@@ -7,6 +7,12 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - secrets
+  verbs:
+  - get
+- apiGroups:
+  - ""
+  resources:
   - services
   verbs:
   - get
@@ -16,6 +22,14 @@ rules:
   - apps
   resources:
   - deployments
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - argoproj.io
+  resources:
+  - applications
   verbs:
   - get
   - list
@@ -36,3 +50,21 @@ rules:
   - get
   - patch
   - update
+- apiGroups:
+  - networking.istio.io
+  resources:
+  - destinationrules
+  - virtualservices
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - wgpolicyk8s.io
+  resources:
+  - clusterpolicyreports
+  - policyreports
+  verbs:
+  - get
+  - list
+  - watch
