@@ -149,6 +149,44 @@ For the full phased plan these decisions support, see the plan history for
   with the k8s.io dependency graph. Future `go get -u`/`@latest` runs may
   bump this further; keep CI's pin in sync when it does.
 
+## 2026-07-05 — Phase 2 controller test substitutes fake client for envtest
+
+- **Decision:** `internal/controller/platformmap_controller_test.go` exercises
+  `Reconcile()` against `sigs.k8s.io/controller-runtime/pkg/client/fake` with
+  a stub `discovery.Discoverer`, not a real `envtest` (etcd + kube-apiserver)
+  integration test as `docs/PLAN.md`'s Phase 2 verification step describes.
+  Real end-to-end proof against an actual cluster was instead done manually:
+  `kind create cluster`, apply CRDs + two Deployments/Services + a
+  `PlatformMap`, run `go run ./cmd/manager` against the Kind kubeconfig, curl
+  the read API, confirm the JSON topology and conditions are correct.
+- **Why:** `docs/PLAN.md`'s own risk log (risk 7) already flagged
+  `envtest`'s `setup-envtest` binary as "occasionally fiddly on native
+  Windows." Given a real Kind cluster was going to be used for manual
+  verification anyway (also required by the plan), doing the true end-to-end
+  proof there and keeping the automated test on the fast, dependency-free
+  fake client was the better tradeoff for this phase. `envtest` remains an
+  option to introduce later if a scenario genuinely needs a real API server
+  (e.g. CRD defaulting/validation webhooks) that the fake client can't
+  exercise.
+
+## 2026-07-05 — graph.Merge takes []Graph, not discovery.DiscoveryResult
+
+- **Decision:** `internal/graph/builder.go`'s `Merge` has the signature
+  `Merge(parts ...Graph) Graph`, not `Merge(results ...DiscoveryResult) Graph`
+  as one reading of `docs/PLAN.md`'s Phase 3 section could suggest.
+  `internal/controller/platformmap_controller.go` converts each
+  `discovery.DiscoveryResult` into a `graph.Graph{Nodes, Edges}` before
+  calling `Merge`.
+- **Why:** `docs/PLAN.md` states both that `Merge` takes `DiscoveryResult`
+  *and* that `internal/graph` "never imports anything from
+  internal/discovery" — `DiscoveryResult` is defined in
+  `internal/discovery/k8s.go`, so a literal `Merge(...DiscoveryResult)`
+  signature in the `graph` package would require exactly the import the same
+  paragraph forbids. Taking `Graph` (a type `graph` already owns) resolves
+  the contradiction while preserving the intent: `graph` stays
+  discovery-agnostic, and any future caller (not just
+  `internal/controller`) can build a `Graph` from whatever shape it has.
+
 ## 2026-07-05 — Tracking artifacts
 
 - **Decision:** `task.md` (phase/status tracker) and `decisions.md` (this

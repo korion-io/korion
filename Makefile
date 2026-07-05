@@ -27,7 +27,7 @@ ADDLICENSE ?= $(LOCALBIN)/addlicense
 # package paths explicitly, semicolon-joined, and extend this as new
 # packages land (internal/controller in Phase 2, internal/discovery and
 # internal/graph in Phase 2/3, etc).
-CONTROLLER_GEN_PATHS ?= ./api/v1alpha1/...
+CONTROLLER_GEN_PATHS ?= ./api/v1alpha1/...;./internal/controller/...;./internal/discovery/...;./internal/graph/...
 
 .PHONY: help
 help: ## Show this help.

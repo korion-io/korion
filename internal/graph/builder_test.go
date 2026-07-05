@@ -1,0 +1,91 @@
+/*
+Copyright 2026 The Korion Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package graph
+
+import "testing"
+
+func TestMerge(t *testing.T) {
+	tests := []struct {
+		name      string
+		parts     []Graph
+		wantNodes []string // expected Node IDs, in expected order
+		wantEdges int
+	}{
+		{
+			name:      "empty input",
+			parts:     nil,
+			wantNodes: []string{},
+			wantEdges: 0,
+		},
+		{
+			name: "single source",
+			parts: []Graph{
+				{
+					Nodes: []Node{{ID: "a"}, {ID: "b"}},
+					Edges: []Edge{{From: "a", To: "b"}},
+				},
+			},
+			wantNodes: []string{"a", "b"},
+			wantEdges: 1,
+		},
+		{
+			name: "multi-source merge dedupes by ID, later wins",
+			parts: []Graph{
+				{Nodes: []Node{{ID: "a", Status: "unknown"}}},
+				{Nodes: []Node{{ID: "a", Status: "healthy"}, {ID: "b"}}},
+			},
+			wantNodes: []string{"a", "b"},
+			wantEdges: 0,
+		},
+		{
+			name: "erroring source contributes nothing but doesn't block the rest",
+			parts: []Graph{
+				{},
+				{Nodes: []Node{{ID: "a"}}, Edges: []Edge{{From: "a", To: "a"}}},
+			},
+			wantNodes: []string{"a"},
+			wantEdges: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := Merge(tt.parts...)
+			if len(got.Nodes) != len(tt.wantNodes) {
+				t.Fatalf("got %d nodes, want %d (%v)", len(got.Nodes), len(tt.wantNodes), got.Nodes)
+			}
+			for i, id := range tt.wantNodes {
+				if got.Nodes[i].ID != id {
+					t.Errorf("node[%d].ID = %q, want %q", i, got.Nodes[i].ID, id)
+				}
+			}
+			if len(got.Edges) != tt.wantEdges {
+				t.Errorf("got %d edges, want %d", len(got.Edges), tt.wantEdges)
+			}
+		})
+	}
+
+	t.Run("later source wins on conflicting fields", func(t *testing.T) {
+		got := Merge(
+			Graph{Nodes: []Node{{ID: "a", Status: "unknown"}}},
+			Graph{Nodes: []Node{{ID: "a", Status: "healthy"}}},
+		)
+		if got.Nodes[0].Status != "healthy" {
+			t.Errorf("Status = %q, want %q", got.Nodes[0].Status, "healthy")
+		}
+	})
+}

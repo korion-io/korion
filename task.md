@@ -16,7 +16,7 @@ Status legend: `[ ]` pending · `[~]` in progress · `[x]` done
 
 - [x] Phase 0 — Repo scaffold & governance hygiene
 - [x] Phase 1 — API types + CRD generation (PlatformMap, PlatformAgent)
-- [ ] Phase 2 — K8s discovery vertical slice + read API
+- [x] Phase 2 — K8s discovery vertical slice + read API
 - [ ] Phase 3 — Graph builder hardening + frozen contract
 - [ ] Phase 4 — Frontend skeleton against mock data
 - [ ] Phase 5 — Wire canvas to real controller
