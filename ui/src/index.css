@@ -1,0 +1,43 @@
+@import 'tailwindcss';
+
+/*
+ * Korion is dark-theme only (CLAUDE.md: "Dark theme ONLY — do not add light
+ * mode"). Theme tokens are declared once here via Tailwind v4's CSS-first
+ * @theme block, generating utilities like bg-korion-bg / text-korion-cyan
+ * instead of a tailwind.config.js color palette.
+ */
+@theme {
+  --color-korion-bg: #040912;
+  --color-korion-panel: #0a1220;
+  --color-korion-border: #1b2536;
+  --color-korion-cyan: #00c8ff;
+  --color-korion-violet: #8b5cf6;
+  --color-korion-text: #e5e9f0;
+  --color-korion-text-muted: #8b95a7;
+
+  --color-health-healthy: #22c55e;
+  --color-health-degraded: #eab308;
+  --color-health-down: #ef4444;
+  --color-health-unknown: #6b7280;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-korion-bg);
+  color: var(--color-korion-text);
+  font-family:
+    system-ui,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+}

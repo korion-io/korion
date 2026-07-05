@@ -242,3 +242,93 @@ For the full phased plan these decisions support, see the plan history for
   file) live at the repo root as durable, git-committed tracking — separate
   from the ephemeral in-session Task tool, which doesn't survive across
   sessions.
+
+## 2026-07-05 — Phase 4: pin React to 18, not the Vite template's default 19
+
+- **Finding:** `npm create vite@latest ui -- --template react-ts` scaffolds
+  React 19 by default as of this date. `CLAUDE.md`'s tech stack explicitly
+  pins "React 18 + TypeScript."
+- **Fix:** immediately after scaffolding, `npm install react@^18 react-dom@^18
+  @types/react@^18 @types/react-dom@^18` to force the resolution down to
+  18.3.1. npm prints ERESOLVE peer-dependency warnings (several deps declare
+  `peer react@"^18 || ^19"` or similar) but resolves cleanly since 18 is
+  within every stated peer range.
+- **Why it matters:** re-running `npm create vite@latest` in a future phase
+  (or `npm update`) could silently reintroduce React 19 -- verify the
+  installed version against `CLAUDE.md` after any frontend scaffolding step.
+
+## 2026-07-05 — Phase 4: Tailwind v4 CSS-first config, not tailwind.config.js
+
+- **Decision:** styling uses Tailwind v4.3 (current as of this date) via the
+  `@tailwindcss/vite` plugin and a single `@theme { --color-korion-*: ... }`
+  block in `ui/src/index.css`, not a v3-style `tailwind.config.js` color
+  palette.
+- **Why:** v4's CSS-first configuration is simpler for a small, fixed token
+  set (CLAUDE.md's dark palette + tool brand colors) -- no separate JS config
+  file, and the tokens are consumed directly as `bg-korion-bg`/
+  `text-korion-cyan` utilities. `color-scheme: dark` is set once in `:root`;
+  no `dark:` variants exist anywhere, per CLAUDE.md's "Dark theme ONLY" rule.
+
+## 2026-07-05 — Phase 4: BFS-layered canvas layout instead of dagre
+
+- **Decision:** `ui/src/components/TopologyCanvas/layout.ts` assigns node
+  positions via a simple BFS-depth-as-column, order-as-row algorithm, not a
+  dedicated graph-layout library (e.g. `dagre`, `elkjs`).
+- **Why:** the mock topology is small and roughly a DAG (pipeline stages ->
+  services), so a lightweight layered layout gives an acceptable left-to-right
+  flow without a new dependency. Revisit if Phase 6's real discovery output
+  produces graphs irregular enough (deep cycles, very high fan-out) that this
+  starts producing overlapping or unreadable layouts.
+
+## 2026-07-05 — Phase 4: React Flow MiniMap dropped from the canvas
+
+- **Finding:** `@xyflow/react`'s `<MiniMap>` rendered as a large, mostly-blank
+  panel overlapping the bottom-right nodes in manual visual verification
+  (screenshotted via a scratch puppeteer-core script driving local Chrome,
+  since no `chromium-cli`/Playwright was available on this Windows host).
+  `ref-docs/file_000000006c407208be1de7ae77fa6da5.png`'s mockup has no
+  minimap either -- only zoom +/-, a lock, and a fullscreen icon.
+  Fix: removed `<MiniMap>` entirely; kept `<Background>` and `<Controls>`.
+
+## 2026-07-05 — Phase 4: frontend contract fixture strategy
+
+- **Decision:** `ui/src/api/fixtures/sample-topology.json` is a literal copy
+  of the Go-owned `internal/graph/testdata/sample-topology.json`, guarded by
+  `ui/src/api/fixtures/sample-topology.contract.test.ts` (a vitest test that
+  reads the real Go fixture off disk via relative path and asserts deep
+  equality) so the two can't silently drift. `client.ts`'s actual mock data
+  source is a separate, hand-built `mockPlatformMap.ts` -- a richer SuperHeros
+  dataset (18 nodes covering every discovery-engine node type from
+  `internal/graph/colors.go`, plus mocked `DeploymentEvent`/`PolicySummary`
+  data that isn't part of the frozen graph contract at all) needed to render
+  the *full* mockup layout, which the frozen fixture's two nodes are too
+  sparse to demonstrate.
+- **Why:** keeps "prove we match the frozen contract" and "have enough data
+  to build/review the full UI" as two separate, independently-verifiable
+  concerns instead of stretching one fixture to do both jobs.
+
+## 2026-07-05 — Phase 4: license-check/license-fix silently no-op on untracked files
+
+- **Finding:** `make license-check`/`license-fix` build their file list from
+  `git ls-files '*.go' '*.py' '*.ts' '*.tsx'` -- files that are untracked
+  (never `git add`-ed) are invisible to `git ls-files` and silently excluded,
+  so running `license-fix` against a freshly scaffolded `ui/` (all untracked)
+  produced zero output and added no headers, with no error to indicate why.
+- **Fix:** `git add ui` before running `license-fix`/`license-check` so new
+  files are visible to `git ls-files`.
+- **Why it matters:** the same silent no-op will recur for any future phase
+  that scaffolds a batch of new files (Phase 6 engines, Phase 9's `aria/`) --
+  stage new files before trusting a clean `license-check` result.
+
+## 2026-07-05 — Phase 4: jsdom needs a ResizeObserver polyfill for React Flow tests
+
+- **Finding:** `@xyflow/react`'s `<ReactFlow>` calls `ResizeObserver` to
+  measure its container, which jsdom (vitest's test environment) doesn't
+  implement -- component tests rendering `<ReactFlow>`/`<ReactFlowProvider>`
+  threw `ReferenceError: ResizeObserver is not defined` inside a passive
+  effect.
+- **Fix:** `ui/src/setupTests.ts` installs a no-op `ResizeObserverStub` on
+  `globalThis` before tests run.
+- **Why it matters:** any future test that mounts `<ReactFlow>` (directly or
+  via `TopologyCanvas`) depends on this stub already being in place via
+  `vite.config.ts`'s `test.setupFiles`.

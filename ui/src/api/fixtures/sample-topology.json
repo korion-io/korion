@@ -1,0 +1,39 @@
+{
+  "nodes": [
+    {
+      "id": "deployment/superheros/catalog",
+      "type": "k8s-deployment",
+      "label": "catalog",
+      "status": "healthy",
+      "brandColor": "#326CE5",
+      "metadata": {
+        "namespace": "superheros",
+        "replicasReady": 2,
+        "replicasTotal": 2,
+        "image": "example/catalog:v1",
+        "generation": 1,
+        "resourceKind": "Deployment"
+      }
+    },
+    {
+      "id": "service/superheros/catalog",
+      "type": "k8s-service",
+      "label": "catalog",
+      "status": "healthy",
+      "brandColor": "#326CE5",
+      "metadata": {
+        "namespace": "superheros",
+        "clusterIP": "10.0.0.1",
+        "type": "ClusterIP",
+        "resourceKind": "Service"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "service/superheros/catalog",
+      "to": "deployment/superheros/catalog",
+      "type": "routes-to"
+    }
+  ]
+}

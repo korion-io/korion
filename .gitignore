@@ -8,6 +8,8 @@
 ui/node_modules/
 ui/dist/
 ui/.vite/
+ui/coverage/
+ui/*.tsbuildinfo
 
 # Python / ARIA
 aria/__pycache__/
