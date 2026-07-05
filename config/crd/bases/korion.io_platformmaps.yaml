@@ -1,0 +1,317 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.21.0
+  name: platformmaps.korion.io
+spec:
+  group: korion.io
+  names:
+    kind: PlatformMap
+    listKind: PlatformMapList
+    plural: platformmaps
+    singular: platformmap
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.namespace
+      name: Namespace
+      type: string
+    - jsonPath: .status.lastDiscoveryTime
+      name: Discovered
+      type: date
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: |-
+          PlatformMap triggers auto-discovery of a platform's full DevOps stack
+          (GitHub Actions, ArgoCD, Kubernetes, Istio, Kyverno, Prometheus) and
+          renders the result as an interactive topology graph.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: |-
+              PlatformMapSpec defines the desired discovery configuration for a
+              platform's DevOps stack.
+            properties:
+              autoDiscover:
+                default: true
+                description: AutoDiscover enables automatic discovery of the full
+                  DevOps stack.
+                type: boolean
+              namespace:
+                description: Namespace is the target Kubernetes namespace to discover.
+                minLength: 1
+                type: string
+              refreshInterval:
+                default: 30s
+                description: RefreshInterval controls how often the controller re-runs
+                  discovery.
+                type: string
+              repository:
+                description: |-
+                  Repository is the source Git repository URL for the platform being
+                  mapped.
+                type: string
+              tools:
+                description: Tools configures which discovery integrations are enabled.
+                properties:
+                  argocd:
+                    description: |-
+                      ToolConfig is the common per-tool auto-discovery toggle shared by
+                      integrations that need no more than an enabled flag and an optional
+                      endpoint override.
+                    properties:
+                      enabled:
+                        description: Enabled turns on discovery for this tool.
+                        type: boolean
+                      url:
+                        description: |-
+                          URL overrides auto-detection of the tool's API endpoint. Left empty,
+                          Korion auto-detects the endpoint from well-known Service names in the
+                          target namespace.
+                        type: string
+                    required:
+                    - enabled
+                    type: object
+                  github:
+                    description: |-
+                      GitHubToolConfig configures GitHub Actions discovery, which additionally
+                      requires an API token to read workflow run status.
+                    properties:
+                      enabled:
+                        description: Enabled turns on discovery for this tool.
+                        type: boolean
+                      tokenSecretRef:
+                        description: TokenSecretRef references the Secret key holding
+                          a GitHub API token.
+                        properties:
+                          key:
+                            description: The key of the secret to select from.  Must
+                              be a valid secret key.
+                            type: string
+                          name:
+                            default: ""
+                            description: |-
+                              Name of the referent.
+                              This field is effectively required, but due to backwards compatibility is
+                              allowed to be empty. Instances of this type with an empty value here are
+                              almost certainly wrong.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                            type: string
+                          optional:
+                            description: Specify whether the Secret or its key must
+                              be defined
+                            type: boolean
+                        required:
+                        - key
+                        type: object
+                        x-kubernetes-map-type: atomic
+                      url:
+                        description: URL overrides auto-detection of the tool's API
+                          endpoint.
+                        type: string
+                    required:
+                    - enabled
+                    type: object
+                  istio:
+                    description: |-
+                      ToolConfig is the common per-tool auto-discovery toggle shared by
+                      integrations that need no more than an enabled flag and an optional
+                      endpoint override.
+                    properties:
+                      enabled:
+                        description: Enabled turns on discovery for this tool.
+                        type: boolean
+                      url:
+                        description: |-
+                          URL overrides auto-detection of the tool's API endpoint. Left empty,
+                          Korion auto-detects the endpoint from well-known Service names in the
+                          target namespace.
+                        type: string
+                    required:
+                    - enabled
+                    type: object
+                  kiali:
+                    description: |-
+                      ToolConfig is the common per-tool auto-discovery toggle shared by
+                      integrations that need no more than an enabled flag and an optional
+                      endpoint override.
+                    properties:
+                      enabled:
+                        description: Enabled turns on discovery for this tool.
+                        type: boolean
+                      url:
+                        description: |-
+                          URL overrides auto-detection of the tool's API endpoint. Left empty,
+                          Korion auto-detects the endpoint from well-known Service names in the
+                          target namespace.
+                        type: string
+                    required:
+                    - enabled
+                    type: object
+                  kyverno:
+                    description: |-
+                      ToolConfig is the common per-tool auto-discovery toggle shared by
+                      integrations that need no more than an enabled flag and an optional
+                      endpoint override.
+                    properties:
+                      enabled:
+                        description: Enabled turns on discovery for this tool.
+                        type: boolean
+                      url:
+                        description: |-
+                          URL overrides auto-detection of the tool's API endpoint. Left empty,
+                          Korion auto-detects the endpoint from well-known Service names in the
+                          target namespace.
+                        type: string
+                    required:
+                    - enabled
+                    type: object
+                  loki:
+                    description: |-
+                      ToolConfig is the common per-tool auto-discovery toggle shared by
+                      integrations that need no more than an enabled flag and an optional
+                      endpoint override.
+                    properties:
+                      enabled:
+                        description: Enabled turns on discovery for this tool.
+                        type: boolean
+                      url:
+                        description: |-
+                          URL overrides auto-detection of the tool's API endpoint. Left empty,
+                          Korion auto-detects the endpoint from well-known Service names in the
+                          target namespace.
+                        type: string
+                    required:
+                    - enabled
+                    type: object
+                  prometheus:
+                    description: |-
+                      ToolConfig is the common per-tool auto-discovery toggle shared by
+                      integrations that need no more than an enabled flag and an optional
+                      endpoint override.
+                    properties:
+                      enabled:
+                        description: Enabled turns on discovery for this tool.
+                        type: boolean
+                      url:
+                        description: |-
+                          URL overrides auto-detection of the tool's API endpoint. Left empty,
+                          Korion auto-detects the endpoint from well-known Service names in the
+                          target namespace.
+                        type: string
+                    required:
+                    - enabled
+                    type: object
+                type: object
+            required:
+            - namespace
+            type: object
+          status:
+            description: |-
+              PlatformMapStatus reports the last discovered topology and per-source
+              discovery health.
+            properties:
+              conditions:
+                description: |-
+                  Conditions report discovery health per source (e.g. ArgoCDDetected,
+                  IstioDetected), keyed by Condition.Type.
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              lastDiscoveryTime:
+                description: |-
+                  LastDiscoveryTime is when the controller last completed a full
+                  discovery reconcile.
+                format: date-time
+                type: string
+              topology:
+                description: |-
+                  Topology is the discovered platform graph, serialized as opaque JSON.
+                  The concrete Node/Edge schema is frozen against internal/graph in a
+                  later phase; this field stays untyped here to avoid coupling the API
+                  package to an internal package before that contract is frozen.
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

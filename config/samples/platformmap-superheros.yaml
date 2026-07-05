@@ -1,0 +1,25 @@
+apiVersion: korion.io/v1alpha1
+kind: PlatformMap
+metadata:
+  name: superheros-platform
+  namespace: superheros
+spec:
+  repository: https://github.com/gc-ghub/project-gc-industries-devops-superheros
+  namespace: superheros
+  autoDiscover: true
+  tools:
+    argocd:
+      enabled: true
+      url: "" # auto-detected if empty
+    kiali:
+      enabled: true
+    prometheus:
+      enabled: true
+    loki:
+      enabled: true
+    github:
+      enabled: true
+      tokenSecretRef:
+        name: korion-github-secret
+        key: token
+  refreshInterval: 30s

@@ -13,10 +13,21 @@
 # limitations under the License.
 
 IMG ?= korion/korion:dev
-LOCALBIN ?= $(shell pwd)/bin
+# CURDIR (set by make itself, not a subshell) avoids a `mingw32-make` bug on
+# this host where `$(shell pwd)` mis-transcodes the em-dash in this repo's
+# path and silently installs tools into a stray sibling directory.
+LOCALBIN ?= $(CURDIR)/bin
 
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ADDLICENSE ?= $(LOCALBIN)/addlicense
+
+# controller-gen v0.21 errors fatally on any directory matched by a "..."
+# glob that has no .go files directly in it (e.g. "./api/..." fails because
+# api/ itself is empty, even though api/v1alpha1/ has files) -- list leaf
+# package paths explicitly, semicolon-joined, and extend this as new
+# packages land (internal/controller in Phase 2, internal/discovery and
+# internal/graph in Phase 2/3, etc).
+CONTROLLER_GEN_PATHS ?= ./api/v1alpha1/...
 
 .PHONY: help
 help: ## Show this help.
@@ -26,11 +37,11 @@ help: ## Show this help.
 
 .PHONY: generate
 generate: controller-gen ## Generate DeepCopy methods for API types.
-	"$(CONTROLLER_GEN)" object:headerFile="hack/boilerplate.go.txt" paths="./api/..."
+	"$(CONTROLLER_GEN)" object:headerFile="hack/boilerplate.go.txt" paths="$(CONTROLLER_GEN_PATHS)"
 
 .PHONY: manifests
 manifests: controller-gen ## Generate CRD manifests and RBAC from kubebuilder markers.
-	"$(CONTROLLER_GEN)" rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	"$(CONTROLLER_GEN)" rbac:roleName=manager-role crd webhook paths="$(CONTROLLER_GEN_PATHS)" output:crd:artifacts:config=config/crd/bases
 
 ##@ Testing
 

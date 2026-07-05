@@ -1,0 +1,37 @@
+apiVersion: korion.io/v1alpha1
+kind: PlatformAgent
+metadata:
+  name: aria-superheros
+  namespace: superheros
+spec:
+  platformMap: superheros-platform
+  autonomyLevel: suggest # suggest | approve | auto
+  llmProvider:
+    provider: anthropic # anthropic | openai | ollama
+    model: claude-sonnet-4-6
+    apiKeySecretRef:
+      name: aria-llm-secret
+      key: api-key
+  features:
+    alertEnrichment:
+      enabled: true
+      slackWebhookSecretRef:
+        name: aria-slack-secret
+        key: webhook-url
+    healthAdvisor:
+      enabled: true
+      schedule: "0 6 * * *"
+    sreDiagnostics:
+      enabled: true
+    canaryDecision:
+      enabled: true
+  runbooks:
+    - name: crashloopbackoff
+      trigger: "podRestarts > 3"
+      action: diagnose-and-suggest
+    - name: high-error-rate
+      trigger: "errorRate > 5"
+      action: diagnose-and-suggest
+    - name: argocd-drift
+      trigger: "syncStatus == OutOfSync"
+      action: auto-sync-after-validation

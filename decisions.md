@@ -94,6 +94,61 @@ For the full phased plan these decisions support, see the plan history for
   unquoted `test`/shell invocations in the Makefile until path variables were
   quoted. Keep all Makefile recipe path variables quoted going forward.
 
+## 2026-07-05 — mingw32-make mis-transcodes the em-dash in $(shell pwd)
+
+- **Finding:** `mingw32-make controller-gen` (Phase 0's `LOCALBIN ?= $(shell
+  pwd)/bin`) silently installed `controller-gen`/`addlicense` into a stray
+  sibling directory with a mojibake name (`Project- Korion â€” K8s-Native...`)
+  instead of the real repo path, because the subshell `pwd` mis-transcoded
+  the em-dash (U+2014) in this repo's path. `bin/` appeared to not exist even
+  though `make` reported success.
+- **Fix:** `Makefile`'s `LOCALBIN` now uses `$(CURDIR)` (make's own working
+  directory, not a subshell round-trip) instead of `$(shell pwd)`. The stray
+  directory's binaries were recovered and moved into the real `bin/`, and the
+  stray directory was deleted.
+- **Why it matters:** any future `$(shell pwd)`-style construct in this
+  Makefile risks the same silent misdirection on this host. Prefer `$(CURDIR)`
+  or relative paths. Note `mingw32-make` still garbles the em-dash when
+  *echoing* the command line to the terminal (cosmetic only — the actual
+  argument passed to the executable is correct, confirmed by controller-gen's
+  own error messages showing the correct path).
+
+## 2026-07-05 — controller-gen v0.21 fatally errors on empty parent dirs in "..." globs
+
+- **Finding:** `controller-gen ... paths="./api/..."` (and `paths="./..."`)
+  fails with `no Go files in <path>/api` even though `api/v1alpha1/` has
+  buildable Go files — controller-gen v0.21 treats any directory matched by a
+  `...` glob that has zero `.go` files directly in it (like the parent `api/`,
+  which only ever holds the `v1alpha1/` subpackage) as a fatal package-load
+  error, not a skippable one.
+- **Fix:** `Makefile` now defines `CONTROLLER_GEN_PATHS` (currently
+  `./api/v1alpha1/...`) and passes it explicitly to both `generate` and
+  `manifests` instead of a repo-wide `./...` or `./api/...` glob. Extend this
+  variable (semicolon-joined) as new packages with kubebuilder markers land —
+  `internal/controller` in Phase 2, `internal/discovery`/`internal/graph` in
+  Phase 2/3, etc. — always pointing at the leaf package, never an empty
+  parent.
+- **Why it matters:** repo root and `api/`/`internal/` themselves will never
+  contain `.go` files directly per `CLAUDE.md`'s layout, so a naive `./...` in
+  `generate`/`manifests` will keep breaking as more packages are added unless
+  this pattern is followed.
+
+## 2026-07-05 — go.mod bumped to go 1.26.0 by k8s.io/api
+
+- **Finding:** adding `k8s.io/api`, `k8s.io/apimachinery`, and
+  `sigs.k8s.io/controller-runtime` (all `@latest` as of this date) forced
+  `go.mod`'s `go` directive from `1.25.4` to `1.26.0` — `k8s.io/api@v0.36.2`
+  itself declares `go >= 1.26.0`. Confirmed by attempting `go mod edit
+  -go=1.25.4`, which then fails `go build` with that exact message.
+- **Fix:** kept `go 1.26.0` in `go.mod` (locally installed 1.25.4 auto-fetches
+  the 1.26.0 toolchain via `GOTOOLCHAIN=auto`, transparent but requires
+  network on first build). Bumped `.github/workflows/ci.yml`'s two
+  `setup-go` `go-version` pins from `1.22` to `1.26` to match.
+- **Why it matters:** `CLAUDE.md` says "Go 1.22+" as a floor, not a ceiling —
+  this isn't a violation, just a note that the effective minimum has moved
+  with the k8s.io dependency graph. Future `go get -u`/`@latest` runs may
+  bump this further; keep CI's pin in sync when it does.
+
 ## 2026-07-05 — Tracking artifacts
 
 - **Decision:** `task.md` (phase/status tracker) and `decisions.md` (this

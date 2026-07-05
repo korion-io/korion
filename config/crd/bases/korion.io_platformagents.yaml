@@ -1,0 +1,295 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.21.0
+  name: platformagents.korion.io
+spec:
+  group: korion.io
+  names:
+    kind: PlatformAgent
+    listKind: PlatformAgentList
+    plural: platformagents
+    singular: platformagent
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.platformMap
+      name: PlatformMap
+      type: string
+    - jsonPath: .spec.autonomyLevel
+      name: Autonomy
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: |-
+          PlatformAgent is ARIA: the AI intelligence layer that reasons over a
+          referenced PlatformMap's live topology to produce system-specific SRE
+          analysis, health reports, and canary decisions.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: |-
+              PlatformAgentSpec defines ARIA's configuration: which PlatformMap it
+              reasons over, how autonomously it may act, which LLM backs it, and which
+              capabilities and runbooks are enabled.
+            properties:
+              autonomyLevel:
+                default: suggest
+                description: |-
+                  AutonomyLevel controls how much ARIA acts without human approval.
+                  suggest: recommends only. approve: acts after human approval. auto:
+                  acts autonomously, subject to the confidence-score gate.
+                enum:
+                - suggest
+                - approve
+                - auto
+                type: string
+              features:
+                description: Features toggles ARIA's individual capabilities.
+                properties:
+                  alertEnrichment:
+                    description: |-
+                      AlertEnrichmentFeature enriches Alertmanager webhooks with system-specific
+                      SRE analysis posted to Slack.
+                    properties:
+                      enabled:
+                        type: boolean
+                      slackWebhookSecretRef:
+                        description: |-
+                          SlackWebhookSecretRef references the Secret key holding the Slack
+                          incoming webhook URL.
+                        properties:
+                          key:
+                            description: The key of the secret to select from.  Must
+                              be a valid secret key.
+                            type: string
+                          name:
+                            default: ""
+                            description: |-
+                              Name of the referent.
+                              This field is effectively required, but due to backwards compatibility is
+                              allowed to be empty. Instances of this type with an empty value here are
+                              almost certainly wrong.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                            type: string
+                          optional:
+                            description: Specify whether the Secret or its key must
+                              be defined
+                            type: boolean
+                        required:
+                        - key
+                        type: object
+                        x-kubernetes-map-type: atomic
+                    required:
+                    - enabled
+                    type: object
+                  canaryDecision:
+                    description: |-
+                      CanaryDecisionFeature enables promote/hold/rollback recommendations for
+                      versioned canary services.
+                    properties:
+                      enabled:
+                        type: boolean
+                    required:
+                    - enabled
+                    type: object
+                  healthAdvisor:
+                    description: HealthAdvisorFeature runs a scheduled platform health
+                      scan.
+                    properties:
+                      enabled:
+                        type: boolean
+                      schedule:
+                        description: |-
+                          Schedule is a cron expression controlling how often the health
+                          advisor runs.
+                        type: string
+                    required:
+                    - enabled
+                    type: object
+                  sreDiagnostics:
+                    description: SREDiagnosticsFeature enables manual or triggered
+                      incident investigation.
+                    properties:
+                      enabled:
+                        type: boolean
+                    required:
+                    - enabled
+                    type: object
+                type: object
+              llmProvider:
+                description: LLMProvider selects and configures the backing LLM.
+                properties:
+                  apiKeySecretRef:
+                    description: APIKeySecretRef references the Secret key holding
+                      the provider API key.
+                    properties:
+                      key:
+                        description: The key of the secret to select from.  Must be
+                          a valid secret key.
+                        type: string
+                      name:
+                        default: ""
+                        description: |-
+                          Name of the referent.
+                          This field is effectively required, but due to backwards compatibility is
+                          allowed to be empty. Instances of this type with an empty value here are
+                          almost certainly wrong.
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                        type: string
+                      optional:
+                        description: Specify whether the Secret or its key must be
+                          defined
+                        type: boolean
+                    required:
+                    - key
+                    type: object
+                    x-kubernetes-map-type: atomic
+                  model:
+                    description: Model is the provider-specific model identifier.
+                    type: string
+                  provider:
+                    description: Provider selects the LLM backend.
+                    enum:
+                    - anthropic
+                    - openai
+                    - ollama
+                    type: string
+                required:
+                - model
+                - provider
+                type: object
+              platformMap:
+                description: |-
+                  PlatformMap is the name of the PlatformMap this agent reasons over, in
+                  the same namespace.
+                minLength: 1
+                type: string
+              runbooks:
+                description: Runbooks maps trigger conditions to ARIA actions.
+                items:
+                  description: Runbook maps a trigger condition to an ARIA action.
+                  properties:
+                    action:
+                      description: Action is the ARIA action to take when Trigger
+                        evaluates true.
+                      type: string
+                    name:
+                      description: Name identifies the runbook.
+                      type: string
+                    trigger:
+                      description: |-
+                        Trigger is a condition expression evaluated against platform state
+                        (e.g. "podRestarts > 3").
+                      type: string
+                  required:
+                  - action
+                  - name
+                  - trigger
+                  type: object
+                type: array
+            required:
+            - llmProvider
+            - platformMap
+            type: object
+          status:
+            description: |-
+              PlatformAgentStatus reports ARIA's reconciliation health. The reconciler
+              for this type is inert until ARIA itself exists to be reconciled against.
+            properties:
+              conditions:
+                description: |-
+                  Conditions report ARIA's operational health (e.g. PlatformMapFound,
+                  ARIAReachable), keyed by Condition.Type.
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              lastReconcileTime:
+                description: |-
+                  LastReconcileTime is when the controller last reconciled this
+                  PlatformAgent.
+                format: date-time
+                type: string
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

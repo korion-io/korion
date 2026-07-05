@@ -15,7 +15,7 @@ Status legend: `[ ]` pending · `[~]` in progress · `[x]` done
 ## v0.1 — Topology engine (no ARIA)
 
 - [x] Phase 0 — Repo scaffold & governance hygiene
-- [ ] Phase 1 — API types + CRD generation (PlatformMap, PlatformAgent)
+- [x] Phase 1 — API types + CRD generation (PlatformMap, PlatformAgent)
 - [ ] Phase 2 — K8s discovery vertical slice + read API
 - [ ] Phase 3 — Graph builder hardening + frozen contract
 - [ ] Phase 4 — Frontend skeleton against mock data
