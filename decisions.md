@@ -393,3 +393,33 @@ For the full phased plan these decisions support, see the plan history for
   needed, unlike Phase 4's node-click/filter sequence) doesn't need a
   scripted browser automation library -- Chrome's built-in flag is
   sufficient and avoids adding/removing a scratch npm dependency.
+
+## 2026-07-06 — Phase 8: hermetic CRD-fixture acceptance, not the full production stack
+
+- **Decision:** the v0.1 acceptance harness (`test/e2e/run-acceptance.sh`)
+  validates against a Kind cluster carrying only the optional-tool **CRDs +
+  sample CRs** (`test/e2e/fixtures/`), not a full ArgoCD/Istio/Kyverno/
+  Prometheus/Loki control plane. GitHub + Prometheus discovery are disabled in
+  the e2e PlatformMap; their criteria are documented as a manual live-cluster
+  checklist in `test/e2e/ACCEPTANCE.md`.
+- **Why:** Korion's ArgoCD/Istio/Kyverno engines read custom resources via the
+  dynamic client after a discovery-client existence check
+  (`internal/discovery/detect.go`) -- they never talk to those tools'
+  controllers. So CRDs + CRs reproduce the exact discovery path faithfully and
+  hermetically, giving a deterministic, CI-runnable test. GitHub (needs a token)
+  and Prometheus (needs a reachable endpoint) are the only two criteria that
+  can't be reproduced offline, so they stay manual rather than being forced
+  into the automated run.
+- **Verified:** 14 passed / 0 failed / 1 skipped (GitHub) on a real Kind +
+  Helm install; first discovery ~1s, well inside the 60s budget.
+
+## 2026-07-06 — Phase 8: acceptance assertions in Python, not jq
+
+- **Decision:** `assert_acceptance.py` parses the PlatformMap JSON and runs the
+  checklist; the harness shells out to it rather than piping through `jq`.
+- **Why:** `jq` isn't reliably present on the Windows Git Bash dev host, while
+  `python` is (and is trivially available on CI). A single asserter module is
+  also independently unit-testable (`assert_acceptance_test.py`), which a chain
+  of inline `jq` filters embedded in the bash script would not be. Console
+  output uses ASCII `OK/XX/--` markers, not Unicode check/cross glyphs, since
+  Windows `cp1252` stdout can't encode them (hit during first run).

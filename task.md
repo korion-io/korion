@@ -22,7 +22,7 @@ Status legend: `[ ]` pending · `[~]` in progress · `[x]` done
 - [x] Phase 5 — Wire canvas to real controller
 - [x] Phase 6 — Remaining five discovery engines (argocd, istio, kyverno, github, prometheus)
 - [x] Phase 7 — Helm chart
-- [ ] Phase 8 — SuperHeros v0.1 acceptance validation
+- [x] Phase 8 — SuperHeros v0.1 acceptance validation
 
 ## v0.2/v0.3 — ARIA
 

@@ -1,0 +1,34 @@
+# PlatformMap for the hermetic e2e acceptance run.
+#
+# This is deliberately NOT config/samples/platformmap-superheros.yaml: GitHub
+# and Prometheus discovery need a real API token and a reachable Prometheus
+# endpoint respectively, which a hermetic Kind run has neither of. They are
+# disabled here so the automated acceptance is fully self-contained and
+# deterministic (no external network). ArgoCD/Istio/Kyverno discovery is gated
+# only by CRD presence (installed via 00-crds.yaml), so those engines run and
+# are asserted for real.
+#
+# The production sample keeps github/prometheus enabled -- their live
+# verification is the manual checklist in test/e2e/ACCEPTANCE.md, run against a
+# real SuperHeros cluster.
+apiVersion: korion.io/v1alpha1
+kind: PlatformMap
+metadata:
+  name: superheros-platform
+  namespace: superheros
+spec:
+  repository: https://github.com/gc-ghub/project-gc-industries-devops-superheros
+  namespace: superheros
+  autoDiscover: true
+  tools:
+    argocd:
+      enabled: true
+    istio:
+      enabled: true
+    kyverno:
+      enabled: true
+    prometheus:
+      enabled: false # needs a reachable Prometheus endpoint -- see ACCEPTANCE.md
+    github:
+      enabled: false # needs a real API token -- see ACCEPTANCE.md
+  refreshInterval: 15s

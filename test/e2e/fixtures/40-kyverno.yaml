@@ -1,0 +1,65 @@
+# wgpolicyk8s.io PolicyReport / ClusterPolicyReport -- the vendor-neutral
+# reports Kyverno populates (see decisions.md). The KyvernoDiscoverer emits a
+# node per report and, for every result targeting a Deployment, tallies
+# fail/error/warn counts onto that Deployment's node ID
+# (deployment/superheros/<name>) as an enrichment node -- driving the
+# violation-count badge on the affected service.
+#
+# Here: payment has 2 failing policies (-> policyViolations: 2), catalog-v3 has
+# 1 warning (-> policyViolationsWarn: 1, policyViolations: 0). summary/results
+# are top-level fields (not under spec/status), matching the wgpolicyk8s.io
+# schema the discoverer reads.
+---
+apiVersion: wgpolicyk8s.io/v1alpha2
+kind: PolicyReport
+metadata:
+  name: superheros-namespace-report
+  namespace: superheros
+summary:
+  pass: 14
+  fail: 2
+  warn: 1
+  error: 0
+  skip: 0
+results:
+  - policy: require-resource-limits
+    result: fail
+    resources:
+      - kind: Deployment
+        name: payment
+        namespace: superheros
+  - policy: require-run-as-nonroot
+    result: fail
+    resources:
+      - kind: Deployment
+        name: payment
+        namespace: superheros
+  - policy: disallow-latest-tag
+    result: warn
+    resources:
+      - kind: Deployment
+        name: catalog-v3
+        namespace: superheros
+  - policy: require-labels
+    result: pass
+    resources:
+      - kind: Deployment
+        name: frontend
+        namespace: superheros
+---
+apiVersion: wgpolicyk8s.io/v1alpha2
+kind: ClusterPolicyReport
+metadata:
+  name: cluster-baseline-report
+summary:
+  pass: 8
+  fail: 0
+  warn: 0
+  error: 0
+  skip: 1
+results:
+  - policy: require-ns-labels
+    result: pass
+    resources:
+      - kind: Namespace
+        name: superheros
