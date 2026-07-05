@@ -1,0 +1,7 @@
+# The image build runs `npm ci` from package-lock.json inside the builder
+# stage, so a host node_modules/ or dist/ must never leak into the context.
+node_modules/
+dist/
+.vite/
+Dockerfile
+.dockerignore

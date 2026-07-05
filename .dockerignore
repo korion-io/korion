@@ -1,0 +1,15 @@
+# Keep the controller build context small and deterministic: only the Go
+# sources the Dockerfile actually COPYs matter. Everything below is either
+# irrelevant to the binary or a large tree that would slow the build.
+bin/
+ui/
+aria/
+helm/
+config/
+docs/
+ref-docs/
+.git/
+.github/
+*.md
+Dockerfile
+.dockerignore

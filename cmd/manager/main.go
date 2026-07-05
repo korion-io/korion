@@ -56,6 +56,18 @@ func main() {
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.StringVar(&apiAddr, "api-bind-address", ":8082", "The address the read-only PlatformMap API binds to.")
 
+	// Cluster-wide per-engine kill switches. These complement (do not replace)
+	// the per-PlatformMap spec.tools.*.enabled toggles: a disabled engine here
+	// is never registered at all, so no PlatformMap can trigger it regardless
+	// of its spec. The Helm chart wires these from discovery.tools.*.enabled.
+	// K8s core discovery is always on -- it is the baseline vertical slice.
+	var enableArgoCD, enableIstio, enableKyverno, enableGitHub, enablePrometheus bool
+	flag.BoolVar(&enableArgoCD, "enable-argocd", true, "Enable the ArgoCD discovery engine.")
+	flag.BoolVar(&enableIstio, "enable-istio", true, "Enable the Istio discovery engine.")
+	flag.BoolVar(&enableKyverno, "enable-kyverno", true, "Enable the Kyverno (PolicyReport) discovery engine.")
+	flag.BoolVar(&enableGitHub, "enable-github", true, "Enable the GitHub Actions discovery engine.")
+	flag.BoolVar(&enablePrometheus, "enable-prometheus", true, "Enable the Prometheus discovery engine.")
+
 	opts := zap.Options{Development: true}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
@@ -84,17 +96,29 @@ func main() {
 		os.Exit(1)
 	}
 
+	// K8s core discovery is always registered; the rest are gated by their
+	// enable flags so an operator can disable an engine cluster-wide.
+	discoverers := []discovery.Discoverer{&discovery.K8sDiscoverer{Clientset: clientset}}
+	if enableArgoCD {
+		discoverers = append(discoverers, &discovery.ArgoCDDiscoverer{Dynamic: dynamicClient, Discovery: clientset.Discovery()})
+	}
+	if enableIstio {
+		discoverers = append(discoverers, &discovery.IstioDiscoverer{Dynamic: dynamicClient, Discovery: clientset.Discovery()})
+	}
+	if enableKyverno {
+		discoverers = append(discoverers, &discovery.KyvernoDiscoverer{Dynamic: dynamicClient, Discovery: clientset.Discovery()})
+	}
+	if enableGitHub {
+		discoverers = append(discoverers, &discovery.GitHubDiscoverer{Secrets: &discovery.ClientsetSecretResolver{Clientset: clientset}})
+	}
+	if enablePrometheus {
+		discoverers = append(discoverers, &discovery.PrometheusDiscoverer{})
+	}
+
 	reconciler := &controller.PlatformMapReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-		Discoverers: []discovery.Discoverer{
-			&discovery.K8sDiscoverer{Clientset: clientset},
-			&discovery.ArgoCDDiscoverer{Dynamic: dynamicClient, Discovery: clientset.Discovery()},
-			&discovery.IstioDiscoverer{Dynamic: dynamicClient, Discovery: clientset.Discovery()},
-			&discovery.KyvernoDiscoverer{Dynamic: dynamicClient, Discovery: clientset.Discovery()},
-			&discovery.GitHubDiscoverer{Secrets: &discovery.ClientsetSecretResolver{Clientset: clientset}},
-			&discovery.PrometheusDiscoverer{},
-		},
+		Client:      mgr.GetClient(),
+		Scheme:      mgr.GetScheme(),
+		Discoverers: discoverers,
 	}
 	if err := reconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "PlatformMap")

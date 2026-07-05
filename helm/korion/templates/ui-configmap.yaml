@@ -1,0 +1,39 @@
+{{- if .Values.ui.enabled -}}
+{{- /*
+nginx config mounted over the image's baked default. Serves the SPA with
+history-API fallback and reverse-proxies /api/ to the controller's read API
+Service, so the browser (which uses same-origin '' in production builds) never
+talks to the K8s API server directly. The controller Service DNS is resolved
+by nginx at startup; the Service object is created by this same chart, so its
+A record exists regardless of controller pod readiness.
+*/ -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "korion.ui.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "korion.ui.labels" . | nindent 4 }}
+data:
+  default.conf: |
+    server {
+        listen 80;
+        server_name _;
+
+        root /usr/share/nginx/html;
+        index index.html;
+
+        location /api/ {
+            proxy_pass http://{{ include "korion.controller.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.controller.ports.api }};
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+    }
+{{- end }}

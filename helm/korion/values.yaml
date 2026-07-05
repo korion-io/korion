@@ -1,0 +1,113 @@
+# Copyright 2026 The Korion Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# -- Override the chart's generated name (defaults to the chart name "korion").
+nameOverride: ""
+# -- Override the fully qualified resource name prefix (defaults to
+# "<release>-korion", or just "korion" when the release is named "korion").
+fullnameOverride: ""
+
+# Applied to every image reference in the chart. Handy for air-gapped installs
+# that mirror the images into a private registry.
+imagePullSecrets: []
+
+controller:
+  replicaCount: 1
+  image:
+    repository: korion/korion
+    tag: ""              # defaults to .Chart.appVersion when empty
+    pullPolicy: IfNotPresent
+  # Ports the manager binary binds (cmd/manager/main.go defaults).
+  ports:
+    metrics: 8080
+    health: 8081
+    api: 8082
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  # Hardened pod/container security context -- the image already runs as the
+  # distroless nonroot user (65532).
+  podSecurityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+ui:
+  # -- Deploy the React topology frontend. Set false for a headless (API-only)
+  # install.
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: korion/korion-ui
+    tag: ""              # defaults to .Chart.appVersion when empty
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 80
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: korion.local
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+# Cluster-wide discovery-engine toggles. These mirror the per-tool switches on
+# the PlatformMap CRD (spec.tools.*.enabled) but act one level up: a source
+# disabled here is never registered in the controller at all, so no PlatformMap
+# can trigger it. K8s core discovery is always on and has no toggle. Leave
+# these true and control discovery per-PlatformMap via the CR unless you want a
+# hard cluster-wide off switch for a source you never use.
+discovery:
+  tools:
+    argocd:
+      enabled: true
+    istio:
+      enabled: true
+    kyverno:
+      enabled: true
+    github:
+      enabled: true
+    prometheus:
+      enabled: true
+
+# ARIA (the PlatformAgent AI layer) is not installed by this chart yet -- it
+# lands in Phase 12 (v0.2+). The flag exists so v0.1 installs are explicit
+# about it being off, and so enabling it later is a values change, not a chart
+# restructure. Setting it true today has no effect.
+aria:
+  enabled: false

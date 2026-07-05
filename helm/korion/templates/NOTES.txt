@@ -1,0 +1,41 @@
+Korion {{ .Chart.AppVersion }} is installed in namespace "{{ .Release.Namespace }}".
+
+The controller is running and discovering topology for every PlatformMap you apply.
+
+1. Apply a PlatformMap (the SuperHeros sample ships in the repo):
+
+     kubectl apply -f config/samples/platformmap-superheros.yaml
+
+   Watch discovery populate its status:
+
+     kubectl get platformmap -A -o wide
+
+{{ if .Values.ui.enabled -}}
+2. Open the topology dashboard.
+{{- if .Values.ui.ingress.enabled }}
+   It is exposed via Ingress at:
+{{- range .Values.ui.ingress.hosts }}
+     http{{ if $.Values.ui.ingress.tls }}s{{ end }}://{{ .host }}
+{{- end }}
+{{- else }}
+   Port-forward the UI Service:
+
+     kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "korion.ui.fullname" . }} 8080:{{ .Values.ui.service.port }}
+
+   then browse to http://localhost:8080
+{{- end }}
+{{- else }}
+2. The UI is disabled (ui.enabled=false). Reach the read-only API directly:
+
+     kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "korion.controller.fullname" . }} 8082:{{ .Values.controller.ports.api }}
+     curl http://localhost:8082/api/v1/platformmaps/<namespace>/<name>
+{{- end }}
+
+Discovery engines enabled cluster-wide:
+  argocd={{ .Values.discovery.tools.argocd.enabled }} istio={{ .Values.discovery.tools.istio.enabled }} kyverno={{ .Values.discovery.tools.kyverno.enabled }} github={{ .Values.discovery.tools.github.enabled }} prometheus={{ .Values.discovery.tools.prometheus.enabled }}
+(K8s core discovery is always on.)
+
+{{ if .Values.aria.enabled -}}
+NOTE: aria.enabled=true has no effect in this chart version -- ARIA ships in a
+later release. No ARIA pods were created.
+{{- end }}

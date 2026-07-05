@@ -1,0 +1,78 @@
+{{- /*
+Cluster-wide read access for the discovery engines plus write access to the
+PlatformMap status subresource. These rules are transcribed from the generated
+config/rbac/role.yaml (the kubebuilder markers in
+internal/controller/platformmap_controller.go are the source of truth). Keep
+them in sync when `make manifests` changes that file.
+*/ -}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "korion.fullname" . }}-manager-role
+  labels:
+    {{- include "korion.controller.labels" . | nindent 4 }}
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+- apiGroups:
+  - ""
+  resources:
+  - services
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - argoproj.io
+  resources:
+  - applications
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - korion.io
+  resources:
+  - platformmaps
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - korion.io
+  resources:
+  - platformmaps/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - networking.istio.io
+  resources:
+  - destinationrules
+  - virtualservices
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - wgpolicyk8s.io
+  resources:
+  - clusterpolicyreports
+  - policyreports
+  verbs:
+  - get
+  - list
+  - watch

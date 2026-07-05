@@ -34,7 +34,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           cache: "npm"
           cache-dependency-path: ui/package-lock.json
         if: hashFiles('ui/package-lock.json') != ''
@@ -42,12 +42,37 @@ jobs:
         working-directory: ui
         run: |
           if [ -f package-lock.json ]; then
-            npm ci
+            # npm install (not npm ci): package-lock.json is authored on a
+            # Windows host, which never records the linux-only optional native
+            # subtrees (@emnapi/*, @tailwindcss/oxide native binding), so strict
+            # `npm ci` fails its sync check on Linux. Matches ui/Dockerfile.
+            npm install --no-audit --no-fund
             npm run build --if-present
             npm test --if-present
           else
             echo "ui/ not scaffolded yet, skipping"
           fi
+
+  helm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+        with:
+          version: "3.14.0"
+      - name: Lint chart
+        run: helm lint helm/korion
+      - name: Render chart (default + key overrides)
+        run: |
+          # Fail on any template error. Rendering with --include-crds and a
+          # couple of representative override sets is the "helm template
+          # snapshot test" the plan calls for -- it catches template regressions
+          # without pinning brittle golden output.
+          helm template korion helm/korion -n korion-system --include-crds > /dev/null
+          helm template korion helm/korion -n korion-system --set ui.enabled=false > /dev/null
+          helm template korion helm/korion -n korion-system \
+            --set ui.ingress.enabled=true \
+            --set discovery.tools.github.enabled=false > /dev/null
 
   aria:
     runs-on: ubuntu-latest

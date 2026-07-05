@@ -1,0 +1,21 @@
+{{- /*
+Exposes the controller's read-only PlatformMap API (internal/api/server.go).
+The UI's nginx proxies /api/ here; nothing else needs it. ClusterIP only --
+the browser reaches it through the UI Service, never directly.
+*/ -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "korion.controller.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "korion.controller.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "korion.controller.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: api
+      port: {{ .Values.controller.ports.api }}
+      targetPort: api
+      protocol: TCP
