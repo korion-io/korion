@@ -88,4 +88,62 @@ func TestMerge(t *testing.T) {
 			t.Errorf("Status = %q, want %q", got.Nodes[0].Status, "healthy")
 		}
 	})
+
+	t.Run("every merged node gets BrandColor stamped from the lookup table", func(t *testing.T) {
+		got := Merge(Graph{Nodes: []Node{
+			{ID: "d", Type: "k8s-deployment"},
+			{ID: "x", Type: "totally-unknown-type"},
+		}})
+
+		byID := make(map[string]Node)
+		for _, n := range got.Nodes {
+			byID[n.ID] = n
+		}
+		if c := byID["d"].BrandColor; c != "#326CE5" {
+			t.Errorf("k8s-deployment BrandColor = %q, want %q", c, "#326CE5")
+		}
+		if c := byID["x"].BrandColor; c != defaultBrandColor {
+			t.Errorf("unknown-type BrandColor = %q, want fallback %q", c, defaultBrandColor)
+		}
+	})
+
+	t.Run("a later source's partial metadata enriches rather than erases an earlier source's fields", func(t *testing.T) {
+		got := Merge(
+			Graph{Nodes: []Node{{
+				ID:   "svc/catalog",
+				Type: "k8s-service",
+				Metadata: map[string]any{
+					"namespace": "superheros",
+					"clusterIP": "10.0.0.1",
+				},
+			}}},
+			// A hypothetical second source contributing only sync status --
+			// must not wipe out the namespace/clusterIP the first source set.
+			Graph{Nodes: []Node{{
+				ID: "svc/catalog",
+				Metadata: map[string]any{
+					"syncStatus": "Synced",
+				},
+			}}},
+		)
+
+		if len(got.Nodes) != 1 {
+			t.Fatalf("got %d nodes, want 1 (joined by ID)", len(got.Nodes))
+		}
+		md := got.Nodes[0].Metadata
+		if md["namespace"] != "superheros" || md["clusterIP"] != "10.0.0.1" || md["syncStatus"] != "Synced" {
+			t.Errorf("expected joined metadata from both sources, got %+v", md)
+		}
+	})
+
+	t.Run("identical edges from multiple sources collapse to one", func(t *testing.T) {
+		dup := Edge{From: "a", To: "b", Type: "routes-to"}
+		got := Merge(
+			Graph{Nodes: []Node{{ID: "a"}, {ID: "b"}}, Edges: []Edge{dup}},
+			Graph{Edges: []Edge{dup}},
+		)
+		if len(got.Edges) != 1 {
+			t.Errorf("got %d edges, want 1 deduped edge: %+v", len(got.Edges), got.Edges)
+		}
+	})
 }

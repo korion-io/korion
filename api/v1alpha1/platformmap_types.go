@@ -107,9 +107,11 @@ type PlatformMapSpec struct {
 // discovery health.
 type PlatformMapStatus struct {
 	// Topology is the discovered platform graph, serialized as opaque JSON.
-	// The concrete Node/Edge schema is frozen against internal/graph in a
-	// later phase; this field stays untyped here to avoid coupling the API
-	// package to an internal package before that contract is frozen.
+	// The concrete Node/Edge shape is frozen in internal/graph (see
+	// internal/graph/testdata/sample-topology.json) and mirrored by the
+	// frontend's hand-written TS types from Phase 4 on; this field stays
+	// untyped RawExtension here so the API package never has to import an
+	// internal one to describe it.
 	// +optional
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Topology *runtime.RawExtension `json:"topology,omitempty"`

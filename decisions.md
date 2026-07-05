@@ -187,6 +187,55 @@ For the full phased plan these decisions support, see the plan history for
   discovery-agnostic, and any future caller (not just
   `internal/controller`) can build a `Graph` from whatever shape it has.
 
+## 2026-07-05 — Phase 3: BrandColor keyed by literal Node.Type, not a prefix/family match
+
+- **Decision:** `internal/graph/colors.go`'s `brandColors` table is keyed by
+  exact `Node.Type` strings (e.g. `"k8s-deployment"`, `"k8s-service"`), not a
+  derived "family" prefix (e.g. splitting on the first `-`). `BrandColorFor`
+  falls back to a neutral `defaultBrandColor` (`#6B7280`) for any type not yet
+  in the table.
+- **Why:** a prefix-derived scheme breaks down for multi-word families
+  (`"github-actions-workflow"` vs `"github-repository"` want different
+  colors but share the `github` prefix), and CLAUDE.md's brand-color table
+  itself is a flat, explicit list, not a hierarchy. An exact-match table with
+  a safe fallback is simpler and never silently misassigns a color; it costs
+  one line per new Node.Type introduced in Phase 6, which is an acceptable
+  tradeoff for correctness.
+
+## 2026-07-05 — Phase 3: Merge joins same-ID nodes across sources instead of full overwrite
+
+- **Decision:** `graph.Merge`'s conflict handling changed from "later source's
+  Node fully replaces the earlier one" (Phase 2) to `joinNodes`: scalar
+  fields (`Type`, `Label`, `Status`) are replaced only when the later source
+  provides a non-empty value, and `Metadata` maps are shallow-merged key by
+  key. Duplicate edges (identical `From`/`To`/`Type`/`Label` reported by more
+  than one source) now collapse to one via `dedupeEdges`.
+- **Why:** `docs/PLAN.md`'s Phase 3 section describes `Merge` as
+  "dedupes/joins nodes by a stable key," not just dedupes -- once ArgoCD/
+  Istio/Kyverno discovery (Phase 6) can describe an entity K8s discovery
+  already produced a node for, a source that only contributes partial detail
+  (e.g. ArgoCD adding sync status) must enrich that node, not silently erase
+  the K8s-sourced replica counts by fully overwriting it. This is exercised
+  now, ahead of Phase 6, via `internal/graph/builder_test.go`'s synthetic
+  two-source metadata-join and edge-dedup cases.
+
+## 2026-07-05 — Phase 3: frozen fixture verified against both a hand-built Graph and the real K8sDiscoverer
+
+- **Decision:** `internal/graph/testdata/sample-topology.json` is guarded by
+  two tests: `internal/graph/contract_test.go`'s `TestFrozenTopologyContract`
+  (a hand-built `Graph` through `Merge`, structurally compared to the
+  fixture via unmarshal-to-`any` + `reflect.DeepEqual`, so key order doesn't
+  matter) and `internal/discovery/k8s_test.go`'s
+  `TestK8sDiscoverer_MatchesFrozenTopologyContract` (a fake-clientset-backed
+  `K8sDiscoverer.Discover` run through the same `graph.Merge`, compared to
+  the identical fixture).
+- **Why:** a fixture only checked against hand-typed Go literals proves the
+  struct tags are self-consistent, but not that the actual Phase 2 discovery
+  pipeline produces that shape. Having both closes that gap without
+  `internal/graph` importing `internal/discovery` (the second test lives in
+  `internal/discovery`, which already depends on `internal/graph`, not the
+  reverse).
+
 ## 2026-07-05 — Tracking artifacts
 
 - **Decision:** `task.md` (phase/status tracker) and `decisions.md` (this

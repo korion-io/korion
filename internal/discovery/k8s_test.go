@@ -18,7 +18,10 @@ package discovery
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"os"
+	"reflect"
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -29,6 +32,7 @@ import (
 	k8stesting "k8s.io/client-go/testing"
 
 	"github.com/korion-io/korion/api/v1alpha1"
+	"github.com/korion-io/korion/internal/graph"
 )
 
 func int32Ptr(i int32) *int32 { return &i }
@@ -149,6 +153,57 @@ func TestK8sDiscoverer_Discover_EmptyNamespace(t *testing.T) {
 	}
 	if len(result.Nodes) != 0 || len(result.Edges) != 0 {
 		t.Errorf("expected empty result, got %+v", result)
+	}
+}
+
+// TestK8sDiscoverer_MatchesFrozenTopologyContract runs the real Phase 2
+// discovery pipeline (K8sDiscoverer.Discover -> graph.Merge) against a
+// fixture cluster shaped to match internal/graph/testdata/sample-topology.json,
+// and asserts the resulting JSON is structurally identical to that frozen
+// fixture. This is what proves the committed contract isn't just a
+// hand-typed literal in internal/graph's own tests -- the actual discovery
+// engine plus builder pipeline produces it.
+func TestK8sDiscoverer_MatchesFrozenTopologyContract(t *testing.T) {
+	ns := "superheros"
+	labels := map[string]string{"app": "catalog"}
+
+	dep := newDeployment(ns, "catalog", 2, 2, labels)
+	dep.Generation = 1
+
+	svc := newService(ns, "catalog", labels)
+	svc.Spec.Type = corev1.ServiceTypeClusterIP
+
+	clientset := fake.NewClientset(dep, svc)
+	d := &K8sDiscoverer{Clientset: clientset}
+	pm := &v1alpha1.PlatformMap{Spec: v1alpha1.PlatformMapSpec{Namespace: ns}}
+
+	result := d.Discover(context.Background(), pm)
+	if result.Err != nil {
+		t.Fatalf("unexpected error: %v", result.Err)
+	}
+
+	merged := graph.Merge(graph.Graph{Nodes: result.Nodes, Edges: result.Edges})
+
+	gotJSON, err := json.Marshal(merged)
+	if err != nil {
+		t.Fatalf("marshaling merged graph: %v", err)
+	}
+
+	fixtureBytes, err := os.ReadFile("../graph/testdata/sample-topology.json")
+	if err != nil {
+		t.Fatalf("reading fixture: %v", err)
+	}
+
+	var gotGeneric, wantGeneric any
+	if err := json.Unmarshal(gotJSON, &gotGeneric); err != nil {
+		t.Fatalf("unmarshaling built graph JSON: %v", err)
+	}
+	if err := json.Unmarshal(fixtureBytes, &wantGeneric); err != nil {
+		t.Fatalf("unmarshaling fixture: %v", err)
+	}
+
+	if !reflect.DeepEqual(gotGeneric, wantGeneric) {
+		t.Errorf("K8sDiscoverer + graph.Merge output does not match frozen fixture ../graph/testdata/sample-topology.json\ngot:  %s\nwant: %s", gotJSON, fixtureBytes)
 	}
 }
 
