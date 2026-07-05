@@ -1,0 +1,190 @@
+# SuperHeros platform workloads -- the plain Kubernetes half of the topology
+# (the K8sDiscoverer's input). Six microservices: frontend, catalog (canary
+# v1/v2/v3), inventory, orders, payment. Catalog runs three versioned
+# Deployments behind one Service so the Istio VirtualService can split traffic
+# across the v1/v2/v3 subsets.
+#
+# All containers run registry.k8s.io/pause:3.9 -- it ships inside the Kind node
+# image, so no registry pull is needed and pods go Ready immediately. This
+# fixture proves discovery/topology, not the services' own behavior; each
+# Deployment therefore reports ready replicas and a "healthy" node status.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: superheros
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: argocd
+---
+# --- frontend ---------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: superheros
+  labels: { app: frontend }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: frontend } }
+  template:
+    metadata:
+      labels: { app: frontend }
+    spec:
+      containers:
+        - name: frontend
+          image: registry.k8s.io/pause:3.9
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: superheros
+spec:
+  selector: { app: frontend }
+  ports: [{ port: 80, targetPort: 80 }]
+---
+# --- catalog (canary v1/v2/v3) ----------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalog-v1
+  namespace: superheros
+  labels: { app: catalog, version: v1 }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: catalog, version: v1 } }
+  template:
+    metadata:
+      labels: { app: catalog, version: v1 }
+    spec:
+      containers:
+        - name: catalog
+          image: registry.k8s.io/pause:3.9
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalog-v2
+  namespace: superheros
+  labels: { app: catalog, version: v2 }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: catalog, version: v2 } }
+  template:
+    metadata:
+      labels: { app: catalog, version: v2 }
+    spec:
+      containers:
+        - name: catalog
+          image: registry.k8s.io/pause:3.9
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalog-v3
+  namespace: superheros
+  labels: { app: catalog, version: v3 }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: catalog, version: v3 } }
+  template:
+    metadata:
+      labels: { app: catalog, version: v3 }
+    spec:
+      containers:
+        - name: catalog
+          image: registry.k8s.io/pause:3.9
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalog
+  namespace: superheros
+spec:
+  # selects all three versions -- one Service, three backing Deployments
+  selector: { app: catalog }
+  ports: [{ port: 8080, targetPort: 8080 }]
+---
+# --- inventory --------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inventory
+  namespace: superheros
+  labels: { app: inventory }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: inventory } }
+  template:
+    metadata:
+      labels: { app: inventory }
+    spec:
+      containers:
+        - name: inventory
+          image: registry.k8s.io/pause:3.9
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: inventory
+  namespace: superheros
+spec:
+  selector: { app: inventory }
+  ports: [{ port: 8000, targetPort: 8000 }]
+---
+# --- orders -----------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orders
+  namespace: superheros
+  labels: { app: orders }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: orders } }
+  template:
+    metadata:
+      labels: { app: orders }
+    spec:
+      containers:
+        - name: orders
+          image: registry.k8s.io/pause:3.9
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orders
+  namespace: superheros
+spec:
+  selector: { app: orders }
+  ports: [{ port: 3000, targetPort: 3000 }]
+---
+# --- payment ----------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment
+  namespace: superheros
+  labels: { app: payment }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: payment } }
+  template:
+    metadata:
+      labels: { app: payment }
+    spec:
+      containers:
+        - name: payment
+          image: registry.k8s.io/pause:3.9
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment
+  namespace: superheros
+spec:
+  selector: { app: payment }
+  ports: [{ port: 5000, targetPort: 5000 }]

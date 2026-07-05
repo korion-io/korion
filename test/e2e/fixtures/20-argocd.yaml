@@ -1,0 +1,29 @@
+# ArgoCD Application for the SuperHeros platform. Lives in the `argocd`
+# namespace; the ArgoCDDiscoverer lists Applications across all namespaces and
+# keeps only those whose spec.destination.namespace matches the PlatformMap's
+# target namespace (superheros). Status is carried inline (the fixture CRD
+# declares no status subresource) so `kubectl apply` persists the sync/health
+# blocks the discoverer reads.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: superheros
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/gc-ghub/project-gc-industries-devops-superheros
+    path: k8s/overlays/prod
+    targetRevision: main
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: superheros
+status:
+  sync:
+    status: Synced
+    revision: 9f4c1a2e7b3d5680a1c2f3e4d5b6a7c8e9f0a1b2
+  health:
+    status: Healthy
+  operationState:
+    message: successfully synced (all tasks run)
+  reconciledAt: "2026-07-06T05:58:12Z"

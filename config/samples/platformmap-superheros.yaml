@@ -15,10 +15,19 @@ spec:
       enabled: true
     prometheus:
       enabled: true
+      # Set this to your Prometheus query endpoint. Left empty, the discoverer
+      # falls back to a best-effort same-namespace guess
+      # (http://prometheus.<namespace>.svc.cluster.local:9090), which is rarely
+      # right -- Prometheus usually lives in a monitoring namespace. For a
+      # kube-prometheus-stack install this is typically:
+      url: "http://prometheus-operated.monitoring.svc.cluster.local:9090"
     loki:
       enabled: true
     github:
       enabled: true
+      # Create with:
+      #   kubectl -n superheros create secret generic korion-github-secret \
+      #     --from-literal=token=<a GitHub PAT with repo + actions:read>
       tokenSecretRef:
         name: korion-github-secret
         key: token

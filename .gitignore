@@ -12,8 +12,8 @@ ui/coverage/
 ui/*.tsbuildinfo
 
 # Python / ARIA
-aria/__pycache__/
-aria/**/__pycache__/
+__pycache__/
+**/__pycache__/
 aria/.venv/
 aria/*.egg-info/
 

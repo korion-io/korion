@@ -1,0 +1,47 @@
+# Istio canary configuration for the catalog service: a VirtualService that
+# splits traffic 20/30/50 across the v1/v2/v3 subsets, and a DestinationRule
+# defining those subsets by the `version` label.
+#
+# The IstioDiscoverer emits a node per VirtualService/DestinationRule AND an
+# enrichment node keyed by service/superheros/catalog carrying
+# istioTrafficWeights{v1:20,v2:30,v3:50} -- graph.Merge folds that onto the
+# K8sDiscoverer's catalog Service node, giving the canvas its per-version
+# canary split without a duplicate node.
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: catalog
+  namespace: superheros
+spec:
+  hosts:
+    - catalog
+  http:
+    - route:
+        - destination:
+            host: catalog
+            subset: v1
+          weight: 20
+        - destination:
+            host: catalog
+            subset: v2
+          weight: 30
+        - destination:
+            host: catalog
+            subset: v3
+          weight: 50
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: catalog
+  namespace: superheros
+spec:
+  host: catalog
+  subsets:
+    - name: v1
+      labels: { version: v1 }
+    - name: v2
+      labels: { version: v2 }
+    - name: v3
+      labels: { version: v3 }

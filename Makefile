@@ -13,6 +13,7 @@
 # limitations under the License.
 
 IMG ?= korion/korion:dev
+UI_IMG ?= korion/korion-ui:dev
 # CURDIR (set by make itself, not a subshell) avoids a `mingw32-make` bug on
 # this host where `$(shell pwd)` mis-transcodes the em-dash in this repo's
 # path and silently installs tools into a stray sibling directory.
@@ -88,6 +89,14 @@ docker-build: ## Build the controller Docker image.
 docker-push: ## Push the controller Docker image.
 	docker push $(IMG)
 
+.PHONY: docker-build-ui
+docker-build-ui: ## Build the UI Docker image.
+	docker build -t $(UI_IMG) ui
+
+.PHONY: docker-push-ui
+docker-push-ui: ## Push the UI Docker image.
+	docker push $(UI_IMG)
+
 ##@ Deployment
 
 .PHONY: install
@@ -106,6 +115,12 @@ deploy: manifests ## Deploy the controller to the cluster via Helm.
 helm-sync-crds: manifests ## Copy generated CRDs into the Helm chart's crds/ directory.
 	mkdir -p helm/korion/crds
 	cp config/crd/bases/*.yaml helm/korion/crds/
+
+##@ Acceptance
+
+.PHONY: e2e
+e2e: ## Run the Phase 8 SuperHeros v0.1 acceptance harness (Kind + Helm + assert).
+	bash test/e2e/run-acceptance.sh
 
 ##@ Tooling
 
