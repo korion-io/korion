@@ -332,3 +332,64 @@ For the full phased plan these decisions support, see the plan history for
 - **Why it matters:** any future test that mounts `<ReactFlow>` (directly or
   via `TopologyCanvas`) depends on this stub already being in place via
   `vite.config.ts`'s `test.setupFiles`.
+
+## 2026-07-05 — Phase 5: dropped PlatformMapView.cluster, surfaced lastDiscoveryTime instead
+
+- **Finding:** Phase 4's `PlatformMapView.cluster: string` field had no
+  backing data anywhere in the real `PlatformMap` CRD (`api/v1alpha1/
+  platformmap_types.go` has no cluster-name concept) -- it was invented
+  purely to fill the mockup header's second field, with the mock fixture
+  hardcoding `'superhero-prod'`.
+- **Decision:** dropped `cluster` from `PlatformMapView`; the header now
+  shows `{namespace}/{name} · last discovered {time}` from the real
+  `status.lastDiscoveryTime` field instead.
+- **Why:** Phase 5's whole point is wiring the UI to data that's actually
+  real. Keeping a field with no honest source (or fabricating a "cluster
+  name" client-side) would reintroduce exactly the kind of fake data this
+  phase is meant to eliminate. `lastDiscoveryTime` is both real and useful
+  (shows staleness), and if a real cluster-identity concept is needed later
+  it belongs in `PlatformMapSpec`/status on the Go side first.
+
+## 2026-07-05 — Phase 5: lastDiscoveryTime === null is the "not yet reconciled" signal
+
+- **Decision:** `App.tsx` treats `data.lastDiscoveryTime === null` (never
+  populated, i.e. `status` or `status.lastDiscoveryTime` absent from the API
+  response) as "PlatformMap applied but not yet reconciled," and withholds
+  the canvas/side panels in favor of a specific waiting message. A
+  reconciled PlatformMap over a genuinely empty namespace (real timestamp,
+  zero nodes) is treated as a normal, renderable empty graph -- not this
+  state.
+- **Why:** `docs/PLAN.md`'s Phase 5 spec explicitly calls for a distinct
+  "CRD not yet reconciled" UI state, separate from a generic error or an
+  empty-but-valid result. `lastDiscoveryTime` is the one field the
+  controller only ever sets after a completed reconcile
+  (`internal/controller/platformmap_controller.go`), making it a clean,
+  real signal rather than an inferred heuristic like "zero nodes."
+
+## 2026-07-05 — Phase 5: deleted the now-unused mockPlatformMap.ts fixture
+
+- **Decision:** `ui/src/api/fixtures/mockPlatformMap.ts` was deleted rather
+  than left in place as an unused fallback once `client.ts` switched to a
+  real `fetch`. No test or component imported it directly (confirmed by
+  search) -- it existed solely as `client.ts`'s Phase-4 data source.
+- **Why:** `docs/PLAN.md`'s own Phase 4 framing ("swapping to a real fetch
+  in Phase 5 changes only client.ts's implementation") describes a
+  replacement, not a dual-mode toggle; no mock-mode env flag was requested,
+  and adding one would be scope beyond what Phase 5 asked for. Deleting
+  fully-dead code follows the same principle applied throughout this
+  project rather than leaving an inert file that could silently drift from
+  the real `Graph`/`PlatformMapView` shapes over time.
+
+## 2026-07-05 — Phase 5: headless Chrome's own --screenshot flag instead of puppeteer-core
+
+- **Finding:** Phase 4's manual visual verification used a scratch
+  puppeteer-core script since no `chromium-cli`/Playwright was available;
+  puppeteer-core was not installed as a persistent dependency, so it was
+  unavailable again this phase.
+- **Decision:** used the local Chrome installation's own headless CLI
+  (`chrome.exe --headless=new --screenshot=out.png --window-size=W,H
+  --virtual-time-budget=ms URL`) instead of reinstalling puppeteer-core.
+- **Why:** a single static-page capture (no multi-step interaction script
+  needed, unlike Phase 4's node-click/filter sequence) doesn't need a
+  scripted browser automation library -- Chrome's built-in flag is
+  sufficient and avoids adding/removing a scratch npm dependency.

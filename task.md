@@ -19,7 +19,7 @@ Status legend: `[ ]` pending · `[~]` in progress · `[x]` done
 - [x] Phase 2 — K8s discovery vertical slice + read API
 - [x] Phase 3 — Graph builder hardening + frozen contract
 - [x] Phase 4 — Frontend skeleton against mock data
-- [ ] Phase 5 — Wire canvas to real controller
+- [x] Phase 5 — Wire canvas to real controller
 - [ ] Phase 6 — Remaining five discovery engines (argocd, istio, kyverno, github, prometheus)
 - [ ] Phase 7 — Helm chart
 - [ ] Phase 8 — SuperHeros v0.1 acceptance validation

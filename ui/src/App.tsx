@@ -15,6 +15,7 @@
  */
 
 import type { ReactNode } from 'react'
+import { PlatformMapNotFoundError } from './api/client'
 import { DeploymentTimeline } from './components/DeploymentTimeline'
 import { PolicyPanel } from './components/PolicyPanel'
 import { ServiceDetails } from './components/ServiceDetails'
@@ -22,14 +23,17 @@ import { Sidebar } from './components/Sidebar'
 import { TopologyCanvas } from './components/TopologyCanvas'
 import { usePlatformMap } from './hooks/usePlatformMap'
 
-// Phase 4 renders against the mock fixture; Phase 5 makes this namespace/name
-// pair a real route param once the canvas is wired to the live controller.
-const NAMESPACE = 'superheros'
-const NAME = 'superheros-platform'
+// Which PlatformMap to poll -- defaults to the SuperHeros sample
+// (config/samples/platformmap-superheros.yaml) so this points at the
+// canonical test case out of the box, but is overridable via env for
+// pointing a local dev build at a different cluster/PlatformMap (e.g. Phase
+// 2's manual demo/demo-platform) without a code change.
+const NAMESPACE = import.meta.env.VITE_PLATFORMMAP_NAMESPACE ?? 'superheros'
+const NAME = import.meta.env.VITE_PLATFORMMAP_NAME ?? 'superheros-platform'
 
 function CenteredMessage({ children }: { children: ReactNode }) {
   return (
-    <div className="flex h-full items-center justify-center text-sm text-korion-text-muted">
+    <div className="flex h-full items-center justify-center px-8 text-center text-sm text-korion-text-muted">
       {children}
     </div>
   )
@@ -37,6 +41,7 @@ function CenteredMessage({ children }: { children: ReactNode }) {
 
 function App() {
   const { data, isLoading, isError, error } = usePlatformMap(NAMESPACE, NAME)
+  const reconciled = data !== undefined && data.lastDiscoveryTime !== null
 
   return (
     <div className="flex h-screen overflow-hidden bg-korion-bg text-korion-text">
@@ -52,7 +57,9 @@ function App() {
           </div>
           {data && (
             <span className="text-xs text-korion-text-muted">
-              {data.cluster} · {data.namespace}
+              {data.namespace}/{data.name}
+              {data.lastDiscoveryTime &&
+                ` · last discovered ${new Date(data.lastDiscoveryTime).toLocaleTimeString()}`}
             </span>
           )}
         </header>
@@ -60,18 +67,31 @@ function App() {
         <div className="flex min-h-0 flex-1">
           <main className="min-w-0 flex-1">
             {isLoading && <CenteredMessage>Loading topology…</CenteredMessage>}
-            {isError && (
+            {isError && error instanceof PlatformMapNotFoundError && (
               <CenteredMessage>
-                Failed to load PlatformMap: {error instanceof Error ? error.message : 'unknown error'}
+                {error.message}. Apply a PlatformMap to this cluster (see{' '}
+                config/samples/platformmap-superheros.yaml) and it will appear here automatically.
               </CenteredMessage>
             )}
-            {data && <TopologyCanvas graph={data.topology} />}
+            {isError && !(error instanceof PlatformMapNotFoundError) && (
+              <CenteredMessage>
+                Failed to load PlatformMap: {error instanceof Error ? error.message : 'unknown error'}.
+                Is the Korion controller's read API reachable?
+              </CenteredMessage>
+            )}
+            {data && !reconciled && (
+              <CenteredMessage>
+                PlatformMap {data.namespace}/{data.name} was applied but hasn't completed its first
+                discovery reconcile yet -- this refreshes automatically.
+              </CenteredMessage>
+            )}
+            {data && reconciled && <TopologyCanvas graph={data.topology} />}
           </main>
-          {data && <ServiceDetails graph={data.topology} />}
+          {data && reconciled && <ServiceDetails graph={data.topology} />}
         </div>
 
         <div className="grid h-64 shrink-0 grid-cols-2 border-t border-korion-border">
-          {data && (
+          {data && reconciled && (
             <>
               <DeploymentTimeline events={data.deploymentEvents} />
               <PolicyPanel summary={data.policySummary} />

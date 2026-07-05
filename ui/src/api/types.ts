@@ -87,12 +87,26 @@ export interface PolicySummary {
   violations: PolicyViolation[]
 }
 
-/** The full mock/real payload the canvas and side panels render from. */
+/** Mirrors metav1.Condition as returned in PlatformMap.status.conditions
+ * (e.g. type "K8sDetected", status "True"/"False"/"Unknown"). */
+export interface PlatformMapCondition {
+  type: string
+  status: 'True' | 'False' | 'Unknown'
+  reason?: string
+  message?: string
+  lastTransitionTime?: string
+}
+
+/** The full payload the canvas and side panels render from. */
 export interface PlatformMapView {
   name: string
   namespace: string
-  cluster: string
   topology: Graph
+  /** Per-discovery-source health, straight from PlatformMap.status.conditions. */
+  conditions: PlatformMapCondition[]
+  /** PlatformMap.status.lastDiscoveryTime -- null until the controller
+   * completes its first reconcile after this PlatformMap was applied. */
+  lastDiscoveryTime: string | null
   deploymentEvents: DeploymentEvent[]
   policySummary: PolicySummary
 }
